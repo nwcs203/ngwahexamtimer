@@ -91,10 +91,16 @@
         <button id="btnLogout" class="logout-btn" onclick="logout()">登出系統</button>
     </div>
 
-    <div id="loginScreen" class="card">
+<div id="loginScreen" class="card">
         <h2 style="margin-top: 0;">系統登入</h2>
-        <p style="color: var(--text-secondary); margin-bottom: 25px; font-size: 14px;">請輸入密碼以進入對應介面</p>
-        <input type="password" id="passwordInput" class="login-input" placeholder="密碼 (Password)" onkeypress="if(event.key === 'Enter') checkLogin()">
+        <p style="color: var(--text-secondary); margin-bottom: 25px; font-size: 14px;">請選擇身分並輸入密碼</p>
+        
+        <select id="roleSelect" class="login-input" style="text-align: center;">
+            <option value="user">👨‍🏫 普通用家 (老師)</option>
+            <option value="admin">⚙️ 系統管理員</option>
+        </select>
+
+        <input type="password" id="passwordInput" class="login-input" placeholder="請輸入密碼" onkeypress="if(event.key === 'Enter') checkLogin()">
         <button class="login-btn" onclick="checkLogin()">登入</button>
         <p id="loginError" style="color: var(--red); font-size: 14px; display: none; margin-top: 15px;">密碼錯誤，請重試。</p>
     </div>
@@ -168,12 +174,14 @@
         const btnLogout = document.getElementById('btnLogout');
         const systemSubtitle = document.getElementById('systemSubtitle');
 
-        function checkLogin() {
+function checkLogin() {
+            const role = document.getElementById('roleSelect').value;
             const pwd = document.getElementById('passwordInput').value;
-            if (pwd === 'NWcs1965!') {
+            
+            if (role === 'user' && pwd === 'NWcs1965!') {
                 sessionStorage.setItem('userRole', 'user');
                 loadInterface();
-            } else if (pwd === 'NWcs2026!') {
+            } else if (role === 'admin' && pwd === 'NWcs2026!') {
                 sessionStorage.setItem('userRole', 'admin');
                 loadInterface();
             } else {
