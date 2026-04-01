@@ -73,7 +73,7 @@
         </p>
         <div class="sync-status" id="adminSyncStatus">🔄 正在檢查雲端資料庫連線...</div>
         <div style="margin-top: 30px;">
-            <a href="https://docs.google.com/spreadsheets/d/e/2PACX-1vSSqooY9jKm8yYbe4PLhtWGFEgvfq74w0NXdS307UtK4jk_NNaIDa5RO-_xBWswzNftgy-kL695ylDu/pubhtml" target="_blank" style="text-decoration: none;">
+            <a href="https://docs.google.com/spreadsheets/d/1MSJGV3zcA92HWEAsunr4OzQzp22-K7CLZ4W4ZNtJmmk/edit?usp=sharing" target="_blank" style="text-decoration: none;">
                 <button class="login-btn" style="background: #0f9d58;">📊 前往 Google Sheets 修改考卷</button>
             </a>
         </div>
@@ -123,7 +123,7 @@
 
     <script>
         // 🔴【重要設定】請把下面引號內的網址，換成你的 Google Sheets CSV 發佈連結！
-        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSSqooY9jKm8yYbe4PLhtWGFEgvfq74w0NXdS307UtK4jk_NNaIDa5RO-_xBWswzNftgy-kL695ylDu/pubhtml";
+        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSSqooY9jKm8yYbe4PLhtWGFEgvfq74w0NXdS307UtK4jk_NNaIDa5RO-_xBWswzNftgy-kL695ylDu/pub?output=csv";
 
         let examDB = {};
         let timer, remaining = 0, isRunning = false, endTime;
@@ -182,7 +182,7 @@
                 if (GOOGLE_SHEET_CSV_URL.includes("YOUR_CODE_HERE")) {
                     examDB = { "S1 (示範)": [{name:"數學", mins: 75}, {name:"英文", mins: 60}] };
                     if(mode === 'user') buildDropdowns();
-                    if(mode === 'admin') document.getElementById('adminSyncStatus').innerHTML = "⚠️ 請先在程式碼中貼上您的 Google Sheets 連結！";
+                    if(mode === 'admin') document.getElementById('adminSyncStatus').innerHTML = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSSqooY9jKm8yYbe4PLhtWGFEgvfq74w0NXdS307UtK4jk_NNaIDa5RO-_xBWswzNftgy-kL695ylDu/pub?output=csv";
                     document.getElementById('loadingStatus').style.display = 'none';
                     return;
                 }
