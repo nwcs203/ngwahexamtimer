@@ -13,31 +13,37 @@
 
         body { font-family: var(--font-family); background-color: var(--bg-color); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
 
-        /* 登入介面 */
+        /* --- 登入介面 --- */
         .login-card { background: white; padding: 40px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; margin-top: 10vh; }
         .login-input { width: 100%; padding: 15px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 12px; font-size: 16px; box-sizing: border-box; text-align: center; }
         .login-btn { width: 100%; background: var(--blue); color: white; padding: 16px; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        
-        /* 儀表板 */
+        .login-btn:hover { background: var(--blue-hover); }
+
+        /* --- 儀表板與卡片 --- */
         #mainDashboard { display: none; width: 100%; max-width: 1400px; grid-template-columns: 3fr 1fr; gap: 20px; height: calc(100vh - 100px); }
         .card { background: white; border-radius: 24px; padding: 30px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
 
-        /* 計時器字體 */
-        .exam-title { font-size: 48px !important; font-weight: 800; color: var(--text-primary); margin-bottom: 10px; text-align: center; }
+        /* --- 超大字體設定 --- */
+        .exam-title { font-size: 64px !important; font-weight: 800; color: var(--text-primary); margin-bottom: 10px; text-align: center; }
         .time-display { font-size: 320px !important; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; text-align: center; margin: 20px 0; white-space: nowrap; }
         .time-ends-at { font-size: 24px; font-weight: 600; color: var(--text-secondary); text-align: center; background: #f5f5f7; padding: 10px 20px; border-radius: 50px; align-self: center; }
 
-        /* 控制區 */
+        /* --- 控制區與備註 --- */
         .controls { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 20px; border-top: 1px solid #eee; }
         .btn-group button { padding: 15px 30px; font-size: 20px; font-weight: 600; border-radius: 12px; border: none; cursor: pointer; color: white; margin-right: 10px; }
         .btn-start { background: var(--green); } .btn-pause { background: #ff9f0a; } .btn-reset { background: var(--red); }
         .remarks-area { flex-grow: 1; width: 100%; border: none; font-size: 22px; line-height: 1.6; resize: none; outline: none; background: #fffcf0; padding: 15px; border-radius: 12px; box-sizing: border-box; }
 
-        /* 管理員介面 */
+        /* --- 管理員介面 --- */
         #adminView { display: none; text-align: center; padding: 50px; background: white; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 600px; width: 100%; margin-top: 5vh;}
         .sync-status { padding: 20px; border-radius: 12px; background: #e8f5e9; color: #2e7d32; font-weight: bold; margin: 20px 0; font-size: 18px; border: 1px solid #c8e6c9;}
-
         .header { width: 100%; max-width: 1400px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+
+        /* --- 彈出視窗 (Modal) --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 1000; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-box { background: #fff; border-radius: 24px; padding: 40px; text-align: center; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .modal-btn { background: var(--blue); color: white; width: 100%; font-size: 22px; font-weight: bold; padding: 16px; border: none; border-radius: 14px; cursor: pointer; margin-top: 20px;}
     </style>
 </head>
 <body>
@@ -54,28 +60,24 @@
             <option value="user">👨‍🏫 監考老師 (普通用家)</option>
             <option value="admin">⚙️ 系統管理員</option>
         </select>
-        <input type="password" id="passwordInput" class="login-input" placeholder="密碼">
-        <button class="login-btn" onclick="handleLogin()">登入系統</button>
-        <p id="loginError" style="color:var(--red); display:none; margin-top:10px">密碼錯誤！</p>
+        <input type="password" id="passwordInput" class="login-input" placeholder="密碼" onkeypress="if(event.key === 'Enter') handleLogin()">
+        <button class="login-btn" onclick="handleLogin()">登入並開啟系統 (新分頁)</button>
+        <p id="loginError" style="color:var(--red); display:none; margin-top:15px; font-weight:bold;">密碼錯誤！</p>
     </div>
 
     <div id="adminView">
         <h2 style="color: var(--blue);">⚙️ 雲端資料庫管理中心</h2>
         <p style="color: var(--text-secondary); line-height: 1.6;">
             本系統已升級為「Google Sheets 全校雲端同步」。<br>
-            您無需在此手動上傳檔案。只需在 Google 試算表中修改考卷資料，<br>全校老師的網頁將會自動抓取最新名單！
+            請直接在 Google 試算表中修改考卷資料，<br>全校老師的網頁將會自動抓取最新名單！
         </p>
-        
-        <div class="sync-status" id="adminSyncStatus">
-            🔄 正在檢查雲端資料庫連線...
-        </div>
-
+        <div class="sync-status" id="adminSyncStatus">🔄 正在檢查雲端資料庫連線...</div>
         <div style="margin-top: 30px;">
             <a href="https://docs.google.com/spreadsheets" target="_blank" style="text-decoration: none;">
                 <button class="login-btn" style="background: #0f9d58;">📊 前往 Google Sheets 修改考卷</button>
             </a>
         </div>
-        <p style="font-size: 14px; color: #888; margin-top: 20px;">注意：在 Google Sheets 修改後，請等待約 3-5 分鐘讓 Google 伺服器更新快取，網頁端即可生效。</p>
+        <p style="font-size: 14px; color: #888; margin-top: 20px;">注意：在 Google Sheets 修改後，請等待約 3-5 分鐘讓伺服器更新快取。</p>
     </div>
 
     <div id="mainDashboard">
@@ -111,17 +113,24 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="reminderModal">
+        <div class="modal-box">
+            <h2 id="modalTitle" style="color: var(--red); font-size: 36px; margin-top: 0;">提醒</h2>
+            <p id="modalText" style="color: var(--text-primary); font-size: 26px; font-weight: bold;">內容</p>
+            <button class="modal-btn" onclick="closeModal()">我知道了</button>
+        </div>
+    </div>
+
     <script>
-        // ==========================================
-        // 🔴【重要設定】請將下方的引號內容，替換成你 Google Sheets 發佈出來的 CSV 網址！
-        // ==========================================
-        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSSqooY9jKm8yYbe4PLhtWGFEgvfq74w0NXdS307UtK4jk_NNaIDa5RO-_xBWswzNftgy-kL695ylDu/pub?output=csv";
-        // ==========================================
+        // 🔴【重要設定】請把下面引號內的網址，換成你的 Google Sheets CSV 發佈連結！
+        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSSqooY9jKm8yYbe4PLhtWGFEgvfq74w0NXdS307UtK4jk_NNaIDa5RO-_xBWswzNftgy-kL695ylDu/pubhtml";
 
         let examDB = {};
         let timer, remaining = 0, isRunning = false, endTime;
+        // 提醒標記：防止重複彈出
+        let notified15Min = false, notified5Min = false; 
 
-        // --- 登入邏輯 (這次不用新分頁了，直接載入) ---
+        // --- 登入與新分頁邏輯 ---
         function handleLogin() {
             const role = document.getElementById('roleSelect').value;
             const pwd = document.getElementById('passwordInput').value;
@@ -129,15 +138,24 @@
             if ((role === 'user' && pwd === 'NWcs1965!') || (role === 'admin' && pwd === 'NWcs2026!')) {
                 sessionStorage.setItem('isLoggedIn', 'true');
                 sessionStorage.setItem('userRole', role);
-                window.location.reload(); // 重新載入以執行權限判斷
+                
+                // 在新分頁開啟系統
+                window.open(window.location.href, '_blank');
+                
+                // 原頁面顯示提示
+                document.getElementById('loginError').style.color = 'var(--green)';
+                document.getElementById('loginError').textContent = '✅ 已在新分頁啟動系統！';
+                document.getElementById('loginError').style.display = 'block';
             } else {
+                document.getElementById('loginError').style.color = 'var(--red)';
+                document.getElementById('loginError').textContent = '密碼錯誤！';
                 document.getElementById('loginError').style.display = 'block';
             }
         }
 
         function logout() { sessionStorage.clear(); window.location.reload(); }
 
-        // --- 初始化介面與自動抓取雲端資料 ---
+        // --- 頁面載入初始化 ---
         window.onload = () => {
             const isLoggedIn = sessionStorage.getItem('isLoggedIn');
             const role = sessionStorage.getItem('userRole');
@@ -149,32 +167,32 @@
                 if (role === 'admin') {
                     document.getElementById('adminView').style.display = 'block';
                     document.getElementById('viewName').textContent = "(雲端資料管理)";
-                    fetchCloudData('admin'); // 測試連線
+                    fetchCloudData('admin');
                 } else {
                     document.getElementById('mainDashboard').style.display = 'grid';
                     document.getElementById('viewName').textContent = "(監考模式)";
-                    fetchCloudData('user'); // 抓取資料並建立選單
+                    fetchCloudData('user');
                 }
             }
         };
 
-        // --- 核心：從 Google Sheets 自動抓取資料 ---
+        // --- 雲端抓取資料 (加入快取破解 Cache Buster) ---
         async function fetchCloudData(mode) {
             try {
-                // 如果你還沒設定網址，先給假資料展示
                 if (GOOGLE_SHEET_CSV_URL.includes("YOUR_CODE_HERE")) {
-                    examDB = { "S1 (示範資料)": [{name:"數學", mins: 75}, {name:"英文", mins: 60}] };
+                    examDB = { "S1 (示範)": [{name:"數學", mins: 75}, {name:"英文", mins: 60}] };
                     if(mode === 'user') buildDropdowns();
                     if(mode === 'admin') document.getElementById('adminSyncStatus').innerHTML = "⚠️ 請先在程式碼中貼上您的 Google Sheets 連結！";
                     document.getElementById('loadingStatus').style.display = 'none';
                     return;
                 }
 
-// 加入時間戳記 (Cache Buster) 強制瀏覽器抓取最新版本
-const timeStamp = new Date().getTime();
-const fetchUrl = GOOGLE_SHEET_CSV_URL + "&t=" + timeStamp;
+                // 加入時間戳記，強制瀏覽器抓取最新檔案
+                const timeStamp = new Date().getTime();
+                const separator = GOOGLE_SHEET_CSV_URL.includes("?") ? "&" : "?";
+                const fetchUrl = GOOGLE_SHEET_CSV_URL + separator + "t=" + timeStamp;
 
-const response = await fetch(fetchUrl);
+                const response = await fetch(fetchUrl);
                 if (!response.ok) throw new Error("網路請求失敗");
                 
                 const csvText = await response.text();
@@ -207,12 +225,12 @@ const response = await fetch(fetchUrl);
                 
             } catch (error) {
                 console.error(error);
-                if (mode === 'user') document.getElementById('loadingStatus').innerHTML = "❌ 雲端資料讀取失敗，請聯絡系統管理員檢查 Google Sheets 連結。";
+                if (mode === 'user') document.getElementById('loadingStatus').innerHTML = "❌ 雲端資料讀取失敗，請聯絡系統管理員。";
                 if (mode === 'admin') document.getElementById('adminSyncStatus').innerHTML = "❌ 連線失敗！請確認 Google Sheets 連結是否正確，並已設定為「發佈到網路」。";
             }
         }
 
-        // --- 建立下拉選單 ---
+        // --- 下拉選單建立 ---
         function buildDropdowns() {
             const levelSelect = document.getElementById('levelSelect');
             levelSelect.disabled = false;
@@ -240,7 +258,6 @@ const response = await fetch(fetchUrl);
             }
         };
 
-        // ... (以下為原本的計時器邏輯，保持不變) ...
         document.getElementById('paperSelect').onchange = function() {
             if (this.value) {
                 remaining = this.value * 60;
@@ -249,10 +266,32 @@ const response = await fetch(fetchUrl);
             }
         };
 
+        // --- 計時器與彈出視窗邏輯 ---
         function updateDisplay() {
             let m = Math.floor(remaining / 60).toString().padStart(2, '0');
             let s = (remaining % 60).toString().padStart(2, '0');
             document.getElementById('timeDisplay').textContent = `${m}:${s}`;
+        }
+
+        function showModal(title, text) { 
+            document.getElementById('modalTitle').textContent = title; 
+            document.getElementById('modalText').textContent = text; 
+            document.getElementById('reminderModal').classList.add('active'); 
+        }
+
+        function closeModal() { 
+            document.getElementById('reminderModal').classList.remove('active'); 
+        }
+
+        function checkReminders(s) {
+            if (s <= 15 * 60 + 10 && s >= 15 * 60 && !notified15Min) {
+                showModal("⏳ 剩餘 15 分鐘", "請準備宣佈考試即將結束。");
+                notified15Min = true; 
+            }
+            if (s <= 5 * 60 + 10 && s >= 5 * 60 && !notified5Min) {
+                showModal("🛑 剩餘 5 分鐘", "請宣佈：「停止去洗手間」。");
+                notified5Min = true; 
+            }
         }
 
         function startTimer() {
@@ -265,6 +304,8 @@ const response = await fetch(fetchUrl);
             timer = setInterval(() => {
                 remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
                 updateDisplay();
+                checkReminders(remaining);
+                
                 if (remaining <= 0) { clearInterval(timer); isRunning = false; }
             }, 1000);
             
@@ -277,6 +318,9 @@ const response = await fetch(fetchUrl);
         function resetTimer() {
             if (confirm("確定要重置嗎？這將允許重新選擇考卷。")) {
                 pauseTimer(); remaining = 0; updateDisplay();
+                // 重置提醒狀態
+                notified15Min = false; notified5Min = false;
+                
                 document.getElementById('levelSelect').disabled = false;
                 document.getElementById('levelSelect').value = "";
                 document.getElementById('paperSelect').disabled = true;
@@ -293,6 +337,7 @@ const response = await fetch(fetchUrl);
             updateDisplay();
         }
 
+        // 自動儲存備註
         document.getElementById('remarksInput').oninput = function() { localStorage.setItem('remarks', this.value); };
     </script>
 </body>
