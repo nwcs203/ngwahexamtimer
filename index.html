@@ -170,7 +170,11 @@
                     return;
                 }
 
-                const response = await fetch(GOOGLE_SHEET_CSV_URL);
+// 加入時間戳記 (Cache Buster) 強制瀏覽器抓取最新版本
+const timeStamp = new Date().getTime();
+const fetchUrl = GOOGLE_SHEET_CSV_URL + "&t=" + timeStamp;
+
+const response = await fetch(fetchUrl);
                 if (!response.ok) throw new Error("網路請求失敗");
                 
                 const csvText = await response.text();
