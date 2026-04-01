@@ -122,8 +122,8 @@
     </div>
 
     <script>
-        // 🔴【重要設定】請把下面引號內的網址，換成你的 Google Sheets CSV 發佈連結！
-        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1MSJGV3zcA92HWEAsunr4OzQzp22-K7CLZ4W4ZNtJmmk/export?format=csv&gid=0";
+        // 🔴 使用官方允許的 /pub 格式，加上 single=true 並且保留快取破解器
+        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1MSJGV3zcA92HWEAsunr4OzQzp22-K7CLZ4W4ZNtJmmk/pub?gid=0&single=true&output=csv";
 
         let examDB = {};
         let timer, remaining = 0, isRunning = false, endTime;
@@ -176,21 +176,12 @@
             }
         };
 
-        // --- 雲端抓取資料 (加入快取破解 Cache Buster) ---
-async function fetchCloudData(mode) {
-    try {
-        // 使用 export 網址加上時間戳記，做到 100% 繞過所有快取 (瀏覽器端 + Google伺服器端)
-        const timeStamp = new Date().getTime();
-        const fetchUrl = GOOGLE_SHEET_CSV_URL + "&t=" + timeStamp;
-
-        const response = await fetch(fetchUrl);
-        
-        // ... (以下保持不變) ...
-
-                // 加入時間戳記，強制瀏覽器抓取最新檔案
+        // --- 雲端抓取資料 (已修復變數重複與 CORS 問題) ---
+        async function fetchCloudData(mode) {
+            try {
+                // 產生隨機時間戳記，確保每次抓到的網址都不同，徹底破解快取
                 const timeStamp = new Date().getTime();
-                const separator = GOOGLE_SHEET_CSV_URL.includes("?") ? "&" : "?";
-                const fetchUrl = GOOGLE_SHEET_CSV_URL + separator + "t=" + timeStamp;
+                const fetchUrl = GOOGLE_SHEET_CSV_URL + "&t=" + timeStamp;
 
                 const response = await fetch(fetchUrl);
                 if (!response.ok) throw new Error("網路請求失敗");
@@ -226,7 +217,7 @@ async function fetchCloudData(mode) {
             } catch (error) {
                 console.error(error);
                 if (mode === 'user') document.getElementById('loadingStatus').innerHTML = "❌ 雲端資料讀取失敗，請聯絡系統管理員。";
-                if (mode === 'admin') document.getElementById('adminSyncStatus').innerHTML = "❌ 連線失敗！請確認 Google Sheets 連結是否正確，並已設定為「發佈到網路」。";
+                if (mode === 'admin') document.getElementById('adminSyncStatus').innerHTML = "❌ 連線失敗！請確認 Google Sheets 連結是否已設定為「發佈到網路」。";
             }
         }
 
@@ -285,11 +276,13 @@ async function fetchCloudData(mode) {
 
         function checkReminders(s) {
             if (s <= 15 * 60 + 10 && s >= 15 * 60 && !notified15Min) {
-                showModal("⏳ 剩餘 15 分鐘");
+                // 已補回內文
+                showModal("⏳ 剩餘 15 分鐘", "請準備宣佈考試即將結束。");
                 notified15Min = true; 
             }
             if (s <= 5 * 60 + 10 && s >= 5 * 60 && !notified5Min) {
-                showModal("🛑 剩餘 5 分鐘");
+                // 已補回內文
+                showModal("🛑 剩餘 5 分鐘", "請宣佈：「停止去洗手間」。");
                 notified5Min = true; 
             }
         }
