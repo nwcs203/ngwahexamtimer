@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天主教伍華中學 - 測考計時系統</title>
+    <style>
+        /* Apple 風格基礎設定 */
+        :root {
+            --bg-color: #fbfbfd; --text-primary: #1d1d1f; --text-secondary: #86868b;
+            --blue: #0071e3; --red: #ff3b30; --green: #34c759;
+            --gray-bg: #f5f5f7; --border: #d2d2d7;
+            --font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Helvetica Neue", Helvetica, sans-serif;
+        }
+
+        body { font-family: var(--font-family); background-color: var(--bg-color); color: var(--text-primary); margin: 0; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { font-size: 32px; font-weight: 600; margin: 0 0 10px 0; }
+        .card { background: #ffffff; border-radius: 18px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); padding: 30px; width: 100%; max-width: 800px; margin-bottom: 20px; box-sizing: border-box; }
+        
+        /* 表單與選擇器 */
+        .setup-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+        select { appearance: none; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 16px; background-color: var(--gray-bg); outline: none; }
+        select:focus { border-color: var(--blue); background-color: #fff; box-shadow: 0 0 0 3px rgba(0,113,227,0.1); }
+
+        /* CSV 匯入按鈕 */
+        .csv-upload-btn { display: inline-block; padding: 8px 16px; background: #e8e8ed; color: var(--text-primary); border-radius: 8px; font-size: 14px; cursor: pointer; transition: 0.2s; margin-bottom: 20px;}
+        .csv-upload-btn:hover { background: #d2d2d7; }
+
+        /* 計時器主體 */
+        .timer-container { text-align: center; padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 20px;}
+        .exam-title { font-size: 24px; font-weight: 500; margin-bottom: 10px; color: var(--blue); }
+        .time-display { font-variant-numeric: tabular-nums; font-size: 120px; font-weight: 600; letter-spacing: -0.02em; margin: 0; line-height: 1; transition: color 0.3s; }
+        .time-ends-at { font-size: 18px; color: var(--text-secondary); margin-top: 15px; }
+
+        /* 控制按鈕 */
+        .controls { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; }
+        button { padding: 14px 28px; border-radius: 980px; border: none; font-size: 16px; font-weight: 500; cursor: pointer; transition: all 0.2s; background-color: var(--gray-bg); color: var(--text-primary); }
+        button:active { transform: scale(0.96); }
+        .btn-primary { background-color: var(--blue); color: white; }
+        .btn-success { background-color: var(--green); color: white; }
+        .btn-danger { background-color: var(--red); color: white; }
+
+        /* 自訂補時 */
+        .adjust-time-wrapper { display: inline-flex; align-items: center; background-color: var(--gray-bg); border-radius: 980px; padding: 4px 4px 4px 20px; border: 1px solid var(--border); }
+        .adjust-time-wrapper input { border: none; background: transparent; width: 60px; font-size: 16px; outline: none; font-weight: 500; }
+        .adjust-time-wrapper span { color: var(--text-secondary); margin-right: 15px; font-size: 14px;}
+        .btn-adjust { background-color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+
+        textarea { width: 100%; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background-color: var(--gray-bg); font-size: 16px; resize: vertical; min-height: 100px; box-sizing: border-box; font-family: var(--font-family); margin-top: 10px;}
+
+        /* 彈出視窗 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 1000; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-box { background: #fff; border-radius: 18px; padding: 30px 40px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.2); transform: scale(0.95); transition: transform 0.3s ease; max-width: 400px; width: 90%; }
+        .modal-overlay.active .modal-box { transform: scale(1); }
+        .modal-title { font-size: 24px; font-weight: 600; margin-bottom: 10px; color: var(--red); }
+        .modal-text { font-size: 16px; color: var(--text-secondary); margin-bottom: 25px; line-height: 1.5; }
+        .modal-btn { background: var(--blue); color: white; width: 100%; font-size: 18px; padding: 16px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>天主教伍華中學</h1>
+        <p style="color: var(--text-secondary); margin: 0;">測考計時系統 - 離線智能版</p>
+    </div>
+
+    <div style="text-align: center; width: 100%; max-width: 800px;">
+        <label for="csvFileInput" class="csv-upload-btn">📁 從電腦匯入考試資料 (CSV)</label>
+        <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+        <span id="csvStatus" style="font-size: 12px; color: var(--green); margin-left: 10px;"></span>
+    </div>
+
+    <div class="card">
+        <div class="setup-section">
+            <div class="input-group">
+                <label>級別 (由 CSV 自動載入)</label>
+                <select id="levelSelect">
+                    <option value="">請先匯入 CSV 或使用預設...</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>考卷</label>
+                <select id="paperSelect" disabled>
+                    <option value="">請先選擇級別...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="timer-container">
+            <div class="exam-title" id="examTitle">請選擇考卷以開始</div>
+            <div class="time-display" id="timeDisplay">00:00:00</div>
+            <div class="time-ends-at" id="timeEndsAt">預計結束時間：--:--</div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-success" id="btnStart">開始計時</button>
+            <button id="btnPause">暫停</button>
+            <button class="btn-danger" id="btnEnd">結束/重置</button>
+        </div>
+
+        <div style="text-align: center;">
+            <div class="adjust-time-wrapper">
+                <input type="number" id="customMins" placeholder="0" value="5">
+                <span>分鐘 (可輸入負數扣減)</span>
+                <button id="btnAdjustTime" class="btn-adjust">確認調整</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <label style="font-size: 18px; font-weight: 500;">📝 監考備註 (寫在黑板上的事項)</label>
+        <textarea id="remarksInput" placeholder="在此輸入注意事項，重新整理網頁也不會消失..."></textarea>
+    </div>
+
+    <div class="modal-overlay" id="reminderModal">
+        <div class="modal-box">
+            <div class="modal-title" id="modalTitle">時間提醒</div>
+            <div class="modal-text" id="modalText">訊息內容</div>
+            <button class="modal-btn" onclick="closeModal()">我知道了，關閉視窗</button>
+        </div>
+    </div>
+
+    <script>
+        // 預設資料庫 (如果老師沒匯入 CSV，也能有預設資料測試)
+        let examDatabase = {
+            "S1 (預設)": [{ id: "TEST", name: "系統測試卷", durationMinutes: 16 }]
+        };
+
+        const levelSelect = document.getElementById('levelSelect');
+        const paperSelect = document.getElementById('paperSelect');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const examTitle = document.getElementById('examTitle');
+        const timeEndsAt = document.getElementById('timeEndsAt');
+        const csvFileInput = document.getElementById('csvFileInput');
+        const csvStatus = document.getElementById('csvStatus');
+        
+        let timerInterval;
+        let isRunning = false;
+        let targetEndTime = null; 
+        let remainingSeconds = 0;
+        let notified15Min = false;
+        let notified5Min = false;
+
+        // --- 📊 處理 CSV 匯入邏輯 (純離線) ---
+        function updateLevelDropdown() {
+            levelSelect.innerHTML = '<option value="">請選擇級別...</option>';
+            for (let level in examDatabase) {
+                const opt = document.createElement('option');
+                opt.value = level;
+                opt.textContent = level;
+                levelSelect.appendChild(opt);
+            }
+        }
+
+        csvFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const text = event.target.result;
+                const lines = text.split('\n');
+                let newDB = {};
+                let successCount = 0;
+
+                // 從第2行開始讀取 (跳過標題行)
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue; // 跳過空白行
+                    
+                    // 處理 CSV 格式 (支援逗號分隔)
+                    const cols = lines[i].split(',').map(col => col.trim());
+                    if (cols.length >= 4) {
+                        const level = cols[0];
+                        const id = cols[1];
+                        const name = cols[2];
+                        const mins = parseInt(cols[3]);
+
+                        if (!isNaN(mins)) {
+                            if (!newDB[level]) newDB[level] = [];
+                            newDB[level].push({ id, name, durationMinutes: mins });
+                            successCount++;
+                        }
+                    }
+                }
+
+                if (successCount > 0) {
+                    examDatabase = newDB;
+                    updateLevelDropdown();
+                    csvStatus.textContent = `✅ 成功匯入 ${successCount} 份考卷資料！`;
+                    // 將資料存入本機，這樣重新整理也不用重傳 CSV
+                    localStorage.setItem('savedCSVData', JSON.stringify(examDatabase));
+                } else {
+                    alert("匯入失敗，請檢查 CSV 格式是否為：級別,科目代號,科目名稱,分鐘");
+                }
+            };
+            reader.readAsText(file, 'UTF-8'); // 使用 UTF-8 編碼讀取防亂碼
+        });
+
+        // --- 選單與計時邏輯 ---
+        levelSelect.addEventListener('change', function() {
+            const level = this.value;
+            paperSelect.innerHTML = '<option value="">請選擇考卷...</option>';
+            if (level && examDatabase[level]) {
+                paperSelect.disabled = false;
+                examDatabase[level].forEach(paper => {
+                    const opt = document.createElement('option');
+                    opt.value = paper.durationMinutes;
+                    opt.textContent = `${paper.name} (${paper.durationMinutes} 分鐘)`;
+                    paperSelect.appendChild(opt);
+                });
+            } else { paperSelect.disabled = true; }
+        });
+
+        paperSelect.addEventListener('change', function() {
+            if(this.value && !isRunning) {
+                examTitle.textContent = this.options[this.selectedIndex].text.split(' (')[0];
+                remainingSeconds = parseInt(this.value) * 60;
+                updateDisplay(remainingSeconds);
+            }
+        });
+
+        function startTimer() {
+            if (remainingSeconds <= 0) return;
+            if (!isRunning) {
+                targetEndTime = Date.now() + (remainingSeconds * 1000);
+                localStorage.setItem('examTargetEndTime', targetEndTime);
+                localStorage.setItem('examTitleText', examTitle.textContent);
+            }
+            isRunning = true; localStorage.setItem('examIsRunning', 'true');
+            updateEndTimeDisplay();
+
+            timerInterval = setInterval(() => {
+                const now = Date.now();
+                remainingSeconds = Math.max(0, Math.floor((targetEndTime - now) / 1000));
+                updateDisplay(remainingSeconds);
+                checkReminders(remainingSeconds);
+                localStorage.setItem('examRemaining', remainingSeconds);
+                if (remainingSeconds <= 0) { endTimer(); timeDisplay.style.color = 'var(--red)'; }
+            }, 500);
+        }
+
+        function checkReminders(seconds) {
+            const fifteenMinMark = 15 * 60; const fiveMinMark = 5 * 60; const buffer = 10; 
+            if (seconds <= (fifteenMinMark + buffer) && seconds > fifteenMinMark && !notified15Min) {
+                showModal("即將到達 15 分鐘", "距離考試剩餘 15 分鐘還有 10 秒，請監考老師準備開麥克風宣佈。");
+                notified15Min = true; localStorage.setItem('notified15Min', 'true');
+            }
+            if (seconds <= (fiveMinMark + buffer) && seconds > fiveMinMark && !notified5Min) {
+                showModal("即將到達 5 分鐘", "距離考試剩餘 5 分鐘還有 10 秒，請準備宣佈「停止去洗手間」。");
+                notified5Min = true; localStorage.setItem('notified5Min', 'true');
+            }
+        }
+
+        function showModal(title, text) { document.getElementById('modalTitle').textContent = title; document.getElementById('modalText').textContent = text; document.getElementById('reminderModal').classList.add('active'); }
+        function closeModal() { document.getElementById('reminderModal').classList.remove('active'); }
+
+        function pauseTimer() { isRunning = false; clearInterval(timerInterval); localStorage.setItem('examIsRunning', 'false'); localStorage.setItem('examRemaining', remainingSeconds); timeEndsAt.textContent = "已暫停"; }
+        function endTimer() { isRunning = false; clearInterval(timerInterval); localStorage.removeItem('examTargetEndTime'); localStorage.removeItem('examIsRunning'); localStorage.removeItem('examRemaining'); timeEndsAt.textContent = "考試結束"; notified15Min = false; notified5Min = false; }
+
+        function updateDisplay(seconds) {
+            const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+            const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            timeDisplay.textContent = h === "00" ? `${m}:${s}` : `${h}:${m}:${s}`;
+            timeDisplay.style.color = (seconds > 0 && seconds <= 300) ? "var(--red)" : "var(--text-primary)";
+        }
+
+        function updateEndTimeDisplay() { if (targetEndTime) { const endDate = new Date(targetEndTime); timeEndsAt.textContent = `預計結束時間：${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`; } }
+
+        document.getElementById('btnStart').addEventListener('click', startTimer);
+        document.getElementById('btnPause').addEventListener('click', pauseTimer);
+        document.getElementById('btnEnd').addEventListener('click', () => { if(confirm('確定要結束或重置計時器嗎？')) { endTimer(); updateDisplay(0); } });
+
+        document.getElementById('btnAdjustTime').addEventListener('click', () => {
+            const adjustMins = parseInt(document.getElementById('customMins').value);
+            if (!isNaN(adjustMins) && adjustMins !== 0 && remainingSeconds > 0) {
+                const adjustSeconds = adjustMins * 60;
+                if (remainingSeconds + adjustSeconds <= 0) { alert("扣除的時間不能多於剩餘時間！"); return; }
+                remainingSeconds += adjustSeconds;
+                if (isRunning) { targetEndTime += (adjustSeconds * 1000); localStorage.setItem('examTargetEndTime', targetEndTime); updateEndTimeDisplay(); }
+                updateDisplay(remainingSeconds);
+                if(remainingSeconds > 15 * 60 + 10) { notified15Min = false; localStorage.setItem('notified15Min', 'false'); }
+                if(remainingSeconds > 5 * 60 + 10) { notified5Min = false; localStorage.setItem('notified5Min', 'false'); }
+                document.getElementById('customMins').value = '';
+                document.getElementById('customMins').placeholder = adjustMins > 0 ? `已加 ${adjustMins} 分` : `已減 ${Math.abs(adjustMins)} 分`;
+            }
+        });
+
+        const remarksInput = document.getElementById('remarksInput');
+        remarksInput.addEventListener('input', () => localStorage.setItem('examRemarks', remarksInput.value));
+
+        // --- 初始化載入 ---
+        window.onload = () => {
+            // 嘗試載入之前匯入過的 CSV 資料 (防重新整理消失)
+            const savedCSV = localStorage.getItem('savedCSVData');
+            if (savedCSV) {
+                examDatabase = JSON.parse(savedCSV);
+                csvStatus.textContent = "✅ 已載入儲存的考卷資料";
+            }
+            updateLevelDropdown();
+
+            if (localStorage.getItem('examTitleText')) examTitle.textContent = localStorage.getItem('examTitleText');
+            if (localStorage.getItem('examRemarks')) remarksInput.value = localStorage.getItem('examRemarks');
+            if (localStorage.getItem('notified15Min') === 'true') notified15Min = true;
+            if (localStorage.getItem('notified5Min') === 'true') notified5Min = true;
+
+            const savedIsRunning = localStorage.getItem('examIsRunning');
+            const savedEndTime = localStorage.getItem('examTargetEndTime');
+            
+            if (savedIsRunning === 'true' && savedEndTime) {
+                targetEndTime = parseInt(savedEndTime);
+                remainingSeconds = Math.max(0, Math.floor((targetEndTime - Date.now()) / 1000));
+                if (remainingSeconds > 0) startTimer();
+                else { updateDisplay(0); timeEndsAt.textContent = "考試結束"; }
+            } else if (localStorage.getItem('examRemaining')) {
+                remainingSeconds = parseInt(localStorage.getItem('examRemaining'));
+                updateDisplay(remainingSeconds);
+            }
+        };
+    </script>
+</body>
+</html>
