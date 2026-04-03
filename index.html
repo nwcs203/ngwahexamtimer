@@ -311,12 +311,12 @@
         function checkReminders(s) {
             if (s <= 15 * 60 + 10 && s >= 15 * 60 && !notified15Min) {
                 // 已補回內文
-                showModal("⏳ 剩餘 15 分鐘", "請準備宣佈考試即將結束。");
+                showModal("⏳ 剩餘 15 分鐘");
                 notified15Min = true; 
             }
             if (s <= 5 * 60 + 10 && s >= 5 * 60 && !notified5Min) {
                 // 已補回內文
-                showModal("🛑 剩餘 5 分鐘", "請宣佈：「停止去洗手間」。");
+                showModal("🛑 剩餘 5 分鐘");
                 notified5Min = true; 
             }
         }
