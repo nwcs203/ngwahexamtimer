@@ -176,10 +176,10 @@
             }
         };
 
-        // --- 雲端抓取資料 (已修復變數重複與 CORS 問題) ---
+// --- 雲端抓取資料 (加入自動日期過濾功能) ---
         async function fetchCloudData(mode) {
             try {
-                // 產生隨機時間戳記，確保每次抓到的網址都不同，徹底破解快取
+                // 產生隨機時間戳記，確保徹底破解快取
                 const timeStamp = new Date().getTime();
                 const fetchUrl = GOOGLE_SHEET_CSV_URL + "&t=" + timeStamp;
 
@@ -189,14 +189,41 @@
                 const csvText = await response.text();
                 const lines = csvText.split('\n');
                 
+                // 🌟 取得這台電腦「今天的日期」
+                const today = new Date();
+                const todayYear = today.getFullYear();
+                const todayMonth = today.getMonth();
+                const todayDate = today.getDate();
+                
                 let newDB = {};
+                
+                // 從 i = 1 開始，跳過第一行的標題
                 for(let i = 1; i < lines.length; i++) {
                     if (!lines[i].trim()) continue;
                     let cols = lines[i].split(',');
-                    if(cols.length >= 4) {
-                        let level = cols[0].trim();
-                        let name = cols[2].trim();
-                        let mins = parseInt(cols[3].trim());
+                    
+                    // 🌟 因為多加了日期欄位，現在至少要有 5 個欄位 (cols.length >= 5)
+                    if(cols.length >= 5) {
+                        let dateStr = cols[0].trim(); // A欄: 日期
+                        let level = cols[1].trim();   // B欄: 級別
+                        let name = cols[3].trim();    // D欄: 考卷名稱
+                        let mins = parseInt(cols[4].trim()); // E欄: 分鐘數
+                        
+                        // 🌟 判斷這行試卷是不是「今天」的
+                        let isToday = false;
+                        let sheetDate = new Date(dateStr); // 將文字轉換為時間物件
+                        if (!isNaN(sheetDate)) {
+                            isToday = (sheetDate.getFullYear() === todayYear &&
+                                       sheetDate.getMonth() === todayMonth &&
+                                       sheetDate.getDate() === todayDate);
+                        }
+
+                        // 🌟 核心過濾邏輯：如果是監考老師，且考卷「不是今天」，就直接跳過這筆資料！
+                        if (mode === 'user' && !isToday) {
+                            continue; 
+                        }
+
+                        // 寫入資料庫
                         if (!isNaN(mins)) {
                             if(!newDB[level]) newDB[level] = [];
                             newDB[level].push({ name: name, mins: mins });
@@ -207,17 +234,24 @@
                 examDB = newDB;
                 
                 if (mode === 'user') {
-                    document.getElementById('loadingStatus').innerHTML = "✅ 已成功連線至校內雲端資料庫！";
+                    document.getElementById('loadingStatus').innerHTML = "✅ 已成功連線！系統已自動為您篩選【今日試卷】。";
                     setTimeout(() => document.getElementById('loadingStatus').style.display = 'none', 3000);
-                    buildDropdowns();
+                    
+                    // 檢查今天到底有沒有考卷
+                    if (Object.keys(examDB).length === 0) {
+                        document.getElementById('levelSelect').innerHTML = '<option>今日無排定考試</option>';
+                    } else {
+                        buildDropdowns();
+                    }
+                    
                 } else if (mode === 'admin') {
-                    document.getElementById('adminSyncStatus').innerHTML = "✅ 雲端連線正常！全校老師將自動讀取您的試算表更新。";
+                    document.getElementById('adminSyncStatus').innerHTML = "✅ 雲端連線正常！老師端將只會看見【當日日期】的試卷。";
                 }
                 
             } catch (error) {
                 console.error(error);
                 if (mode === 'user') document.getElementById('loadingStatus').innerHTML = "❌ 雲端資料讀取失敗，請聯絡系統管理員。";
-                if (mode === 'admin') document.getElementById('adminSyncStatus').innerHTML = "❌ 連線失敗！請確認 Google Sheets 連結是否已設定為「發佈到網路」。";
+                if (mode === 'admin') document.getElementById('adminSyncStatus').innerHTML = "❌ 連線失敗！請確認 Google Sheets 連結是否正確。";
             }
         }
 
