@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>天主教伍華中學 - 測考計時控制台</title>
+    <title>天主教伍華中學 - 計時控制台</title>
     <style>
         :root {
             --bg-color: #f0f2f5; --text-primary: #1d1d1f; --text-secondary: #86868b;
@@ -122,15 +122,85 @@
     </div>
 
     <script>
-        // 🔴 使用官方允許的 /pub 格式，加上 single=true 並且保留快取破解器
         const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSSqooY9jKm8yYbe4PLhtWGFEgvfq74w0NXdS307UtK4jk_NNaIDa5RO-_xBWswzNftgy-kL695ylDu/pub?output=csv";
 
         let examDB = {};
         let timer, remaining = 0, isRunning = false, endTime;
-        // 提醒標記：防止重複彈出
         let notified15Min = false, notified5Min = false; 
 
-        // --- 登入與新分頁邏輯 ---
+        // --- 🌟 核心防護：儲存狀態 ---
+        function saveExamState() {
+            const state = {
+                level: document.getElementById('levelSelect').value,
+                paperMins: document.getElementById('paperSelect').value,
+                title: document.getElementById('examTitle').textContent,
+                isRunning: isRunning,
+                endTime: endTime,
+                remaining: remaining,
+                notified15Min: notified15Min,
+                notified5Min: notified5Min
+            };
+            localStorage.setItem('examState', JSON.stringify(state));
+        }
+
+        // --- 🌟 核心防護：恢復狀態 ---
+        function restoreExamState() {
+            const saved = localStorage.getItem('examState');
+            if (!saved) return; 
+            
+            const state = JSON.parse(saved);
+
+            if (state.level) {
+                document.getElementById('levelSelect').value = state.level;
+                const paperSelect = document.getElementById('paperSelect');
+                paperSelect.innerHTML = '<option value="">請選擇考卷...</option>';
+                paperSelect.disabled = false;
+                if (examDB[state.level]) {
+                    examDB[state.level].forEach(p => {
+                        let opt = document.createElement('option');
+                        opt.value = p.mins; opt.textContent = `${p.name} (${p.mins}分)`;
+                        paperSelect.appendChild(opt);
+                    });
+                }
+                document.getElementById('paperSelect').value = state.paperMins;
+            }
+
+            document.getElementById('examTitle').textContent = state.title;
+            notified15Min = state.notified15Min;
+            notified5Min = state.notified5Min;
+
+            if (state.isRunning) {
+                remaining = Math.max(0, Math.floor((state.endTime - Date.now()) / 1000));
+                endTime = state.endTime;
+                isRunning = true;
+                
+                document.getElementById('levelSelect').disabled = true;
+                document.getElementById('paperSelect').disabled = true;
+
+                let endObj = new Date(endTime);
+                document.getElementById('timeEndsAt').textContent = `預計結束：${endObj.getHours().toString().padStart(2, '0')}:${endObj.getMinutes().toString().padStart(2, '0')}`;
+
+                updateDisplay();
+                
+                timer = setInterval(() => {
+                    remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+                    updateDisplay();
+                    checkReminders(remaining);
+                    
+                    if (remaining <= 0) { 
+                        clearInterval(timer); 
+                        isRunning = false; 
+                        saveExamState(); 
+                    }
+                }, 1000);
+            } else {
+                remaining = state.remaining;
+                if (remaining > 0 || state.title !== "尚未選擇考卷") {
+                     updateDisplay();
+                }
+            }
+        }
+
         function handleLogin() {
             const role = document.getElementById('roleSelect').value;
             const pwd = document.getElementById('passwordInput').value;
@@ -139,10 +209,8 @@
                 sessionStorage.setItem('isLoggedIn', 'true');
                 sessionStorage.setItem('userRole', role);
                 
-                // 在新分頁開啟系統
                 window.open(window.location.href, '_blank');
                 
-                // 原頁面顯示提示
                 document.getElementById('loginError').style.color = 'var(--green)';
                 document.getElementById('loginError').textContent = '✅ 已在新分頁啟動系統！';
                 document.getElementById('loginError').style.display = 'block';
@@ -155,7 +223,6 @@
 
         function logout() { sessionStorage.clear(); window.location.reload(); }
 
-        // --- 頁面載入初始化 ---
         window.onload = () => {
             const isLoggedIn = sessionStorage.getItem('isLoggedIn');
             const role = sessionStorage.getItem('userRole');
@@ -176,10 +243,8 @@
             }
         };
 
-// --- 雲端抓取資料 (加入自動日期過濾功能) ---
         async function fetchCloudData(mode) {
             try {
-                // 產生隨機時間戳記，確保徹底破解快取
                 const timeStamp = new Date().getTime();
                 const fetchUrl = GOOGLE_SHEET_CSV_URL + "&t=" + timeStamp;
 
@@ -189,7 +254,6 @@
                 const csvText = await response.text();
                 const lines = csvText.split('\n');
                 
-                // 🌟 取得這台電腦「今天的日期」
                 const today = new Date();
                 const todayYear = today.getFullYear();
                 const todayMonth = today.getMonth();
@@ -197,33 +261,26 @@
                 
                 let newDB = {};
                 
-                // 從 i = 1 開始，跳過第一行的標題
                 for(let i = 1; i < lines.length; i++) {
                     if (!lines[i].trim()) continue;
                     let cols = lines[i].split(',');
                     
-                    // 🌟 因為多加了日期欄位，現在至少要有 5 個欄位 (cols.length >= 5)
                     if(cols.length >= 5) {
-                        let dateStr = cols[0].trim(); // A欄: 日期
-                        let level = cols[1].trim();   // B欄: 級別
-                        let name = cols[3].trim();    // D欄: 考卷名稱
-                        let mins = parseInt(cols[4].trim()); // E欄: 分鐘數
+                        let dateStr = cols[0].trim();
+                        let level = cols[1].trim();  
+                        let name = cols[3].trim();   
+                        let mins = parseInt(cols[4].trim()); 
                         
-                        // 🌟 判斷這行試卷是不是「今天」的
                         let isToday = false;
-                        let sheetDate = new Date(dateStr); // 將文字轉換為時間物件
+                        let sheetDate = new Date(dateStr); 
                         if (!isNaN(sheetDate)) {
                             isToday = (sheetDate.getFullYear() === todayYear &&
                                        sheetDate.getMonth() === todayMonth &&
                                        sheetDate.getDate() === todayDate);
                         }
 
-                        // 🌟 核心過濾邏輯：如果是監考老師，且考卷「不是今天」，就直接跳過這筆資料！
-                        if (mode === 'user' && !isToday) {
-                            continue; 
-                        }
+                        if (mode === 'user' && !isToday) continue; 
 
-                        // 寫入資料庫
                         if (!isNaN(mins)) {
                             if(!newDB[level]) newDB[level] = [];
                             newDB[level].push({ name: name, mins: mins });
@@ -237,11 +294,11 @@
                     document.getElementById('loadingStatus').innerHTML = "✅ 已成功連線！系統已自動為您篩選【今日試卷】。";
                     setTimeout(() => document.getElementById('loadingStatus').style.display = 'none', 3000);
                     
-                    // 檢查今天到底有沒有考卷
                     if (Object.keys(examDB).length === 0) {
                         document.getElementById('levelSelect').innerHTML = '<option>今日無排定考試</option>';
                     } else {
                         buildDropdowns();
+                        restoreExamState(); // 🌟 資料載入後恢復狀態
                     }
                     
                 } else if (mode === 'admin') {
@@ -255,7 +312,6 @@
             }
         }
 
-        // --- 下拉選單建立 ---
         function buildDropdowns() {
             const levelSelect = document.getElementById('levelSelect');
             levelSelect.disabled = false;
@@ -281,6 +337,7 @@
             } else {
                 paperSelect.disabled = true;
             }
+            saveExamState(); // 🌟
         };
 
         document.getElementById('paperSelect').onchange = function() {
@@ -288,10 +345,10 @@
                 remaining = this.value * 60;
                 document.getElementById('examTitle').textContent = this.options[this.selectedIndex].text.split(' (')[0];
                 updateDisplay();
+                saveExamState(); // 🌟
             }
         };
 
-        // --- 計時器與彈出視窗邏輯 ---
         function updateDisplay() {
             let m = Math.floor(remaining / 60).toString().padStart(2, '0');
             let s = (remaining % 60).toString().padStart(2, '0');
@@ -310,14 +367,14 @@
 
         function checkReminders(s) {
             if (s <= 15 * 60 + 10 && s >= 15 * 60 && !notified15Min) {
-                // 已補回內文
-                showModal("⏳ 剩餘 15 分鐘");
+                showModal("⏳ 剩餘 15 分鐘", "請準備宣佈考試即將結束。");
                 notified15Min = true; 
+                saveExamState(); // 🌟
             }
             if (s <= 5 * 60 + 10 && s >= 5 * 60 && !notified5Min) {
-                // 已補回內文
-                showModal("🛑 剩餘 5 分鐘");
+                showModal("🛑 剩餘 5 分鐘", "請宣佈：「停止去洗手間」。");
                 notified5Min = true; 
+                saveExamState(); // 🌟
             }
         }
 
@@ -328,24 +385,33 @@
             document.getElementById('paperSelect').disabled = true;
             endTime = Date.now() + (remaining * 1000);
             
+            saveExamState(); // 🌟
+
             timer = setInterval(() => {
                 remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
                 updateDisplay();
                 checkReminders(remaining);
                 
-                if (remaining <= 0) { clearInterval(timer); isRunning = false; }
+                if (remaining <= 0) { 
+                    clearInterval(timer); 
+                    isRunning = false; 
+                    saveExamState();
+                }
             }, 1000);
             
             let endObj = new Date(endTime);
             document.getElementById('timeEndsAt').textContent = `預計結束：${endObj.getHours().toString().padStart(2, '0')}:${endObj.getMinutes().toString().padStart(2, '0')}`;
         }
 
-        function pauseTimer() { clearInterval(timer); isRunning = false; }
+        function pauseTimer() { 
+            clearInterval(timer); 
+            isRunning = false; 
+            saveExamState(); // 🌟
+        }
 
         function resetTimer() {
             if (confirm("確定要重置嗎？這將允許重新選擇考卷。")) {
                 pauseTimer(); remaining = 0; updateDisplay();
-                // 重置提醒狀態
                 notified15Min = false; notified5Min = false;
                 
                 document.getElementById('levelSelect').disabled = false;
@@ -354,6 +420,8 @@
                 document.getElementById('paperSelect').innerHTML = '<option value="">請先選擇級別...</option>';
                 document.getElementById('examTitle').textContent = "尚未選擇考卷";
                 document.getElementById('timeEndsAt').textContent = "預計結束：--:--";
+                
+                localStorage.removeItem('examState'); // 🌟 清除記憶
             }
         }
 
@@ -362,6 +430,7 @@
             remaining += amt;
             if (isRunning) endTime += (amt * 1000);
             updateDisplay();
+            saveExamState(); // 🌟
         }
 
         // 自動儲存備註
